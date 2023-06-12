@@ -36,7 +36,7 @@ public class MetadataExtractorServiceImpl implements MetadataExtractorService {
                     "&album=" + album;
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + "BQB596tVuc3DY-fZD4apOBVbvLIflh0D5ds5rWnt2VrRU9ZicDxskDFYgAOpxfZPsTeyoX5z0pegiDbTRx7BXD2xQnBTglvweY5MjfwaLIISFf1qBlE");
+            headers.set("Authorization", "Bearer " + "BQB4j14PzpjZ1RCIbiAEGi2VaL7-okXKbNPkImZJhUaVdQun2TpZOaIDHFRzR5rZ8xcrFcOSIX-GSr5Gh9TYjZmBykMs-_Mm9yU1bfX4SaS7fXxVG1Y");
 
             HttpEntity<String> entity = new HttpEntity<>(headers);
             System.out.println(url);

@@ -4,6 +4,7 @@ import com.innowise.enricherservice.service.DiscoveryService;
 import com.innowise.enricherservice.service.SongDownloadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -26,7 +27,12 @@ public class SongDownloadServiceImpl implements SongDownloadService {
         var fileBytes = response.getBody();
 
         if (fileBytes != null) {
-            File tempFile = File.createTempFile("temp", null);
+            HttpHeaders headers = response.getHeaders();
+            String contentDisposition = headers.getFirst(HttpHeaders.CONTENT_DISPOSITION);
+            String filename = extractFilenameFromContentDisposition(contentDisposition);
+            String fileExtension = extractFileExtension(filename);
+
+            File tempFile = File.createTempFile("temp", fileExtension);
             Files.write(tempFile.toPath(), fileBytes);
 
             log.info("File downloaded");
@@ -36,4 +42,31 @@ public class SongDownloadServiceImpl implements SongDownloadService {
             throw new IllegalStateException("Received null response body");
         }
     }
+
+    private String extractFilenameFromContentDisposition(String contentDisposition) {
+        String filename = null;
+        if (contentDisposition != null) {
+            String[] parts = contentDisposition.split(";");
+            for (String part : parts) {
+                if (part.trim().startsWith("filename=")) {
+                    filename = part.substring(part.indexOf('=') + 1).trim();
+                    filename = filename.replaceAll("\"", ""); // Удаление кавычек, если они присутствуют
+                    break;
+                }
+            }
+        }
+        return filename;
+    }
+
+    private String extractFileExtension(String filename) {
+        if (filename != null) {
+            int dotIndex = filename.lastIndexOf('.');
+            if (dotIndex >= 0 && dotIndex < filename.length() - 1) {
+                return filename.substring(dotIndex);
+            }
+        }
+        return "";
+    }
+
+
 }

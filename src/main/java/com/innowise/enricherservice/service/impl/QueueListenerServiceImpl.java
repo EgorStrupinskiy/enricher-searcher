@@ -41,7 +41,7 @@ public class QueueListenerServiceImpl implements QueueListenerService {
     }
 
     @GetMapping("/get")
-    public void get() {
+    public ResponseEntity<String> get() {
         String queueUrl = "http://localhost:4566/000000000000/file-api-queue";
 
         ReceiveMessageRequest receiveRequest = ReceiveMessageRequest.builder()
@@ -56,25 +56,30 @@ public class QueueListenerServiceImpl implements QueueListenerService {
                     for (Message message : messages) {
                         String messageId = message.messageId();
                         String body = message.body();
-                        System.out.println("Message ID: " + messageId);
-                        System.out.println("Message Body: " + body);
+                        log.info("Message received");
+                        log.info("Message ID: " + messageId);
+                        log.info("Message Body: " + body);
                         DeleteMessageRequest deleteRequest = DeleteMessageRequest.builder()
                                 .queueUrl(queueUrl)
                                 .receiptHandle(message.receiptHandle())
                                 .build();
                         try {
                             var file = songDownloadService.downloadFile(Long.valueOf(body));
-                            metadataExtractorService.extractMetadataFromFile(file);
+                            var apiResponse = metadataExtractorService.extractMetadataFromFile(file);
+                            sqsClient.deleteMessage(deleteRequest);
+                            return apiResponse;
                         } catch (Exception e) {
                             log.error("Error while file parsing");
                             throw new InternalServerErrorException("Error while file parsing");
                         }
-                        sqsClient.deleteMessage(deleteRequest);
                     }
                 }
             }
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
+        return ResponseEntity.internalServerError().body("Internal server error");
     }
+
+
 }

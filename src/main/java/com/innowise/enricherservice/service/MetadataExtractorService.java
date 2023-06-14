@@ -1,12 +1,11 @@
 package com.innowise.enricherservice.service;
 
-import org.springframework.http.ResponseEntity;
+import com.innowise.enricherservice.model.SongData;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 
 @Service
 public interface MetadataExtractorService {
-
-    ResponseEntity<String> extractMetadataFromFile(File file);
+    SongData extractMetadataFromFile(File file);
 }

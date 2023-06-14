@@ -15,10 +15,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SpotifyApiAuthServiceImpl implements SpotifyApiAuthService {
 
+    private final String TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token";
+
     @Override
     public String getAccessToken(String clientId, String clientSecret) {
         var restTemplate = new RestTemplate();
-        String tokenEndpoint = "https://accounts.spotify.com/api/token";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -32,7 +33,7 @@ public class SpotifyApiAuthServiceImpl implements SpotifyApiAuthService {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(requestBody, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(tokenEndpoint, request, Map.class);
+        ResponseEntity<Map> response = restTemplate.postForEntity(TOKEN_ENDPOINT, request, Map.class);
 
         if (response.getStatusCode() == HttpStatus.OK) {
             Map<String, Object> responseBody = response.getBody();

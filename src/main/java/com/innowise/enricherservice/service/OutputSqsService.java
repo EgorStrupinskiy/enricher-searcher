@@ -3,6 +3,6 @@ package com.innowise.enricherservice.service;
 import org.springframework.stereotype.Service;
 
 @Service
-public interface DiscoveryService {
-    String getMicroserviceUrl(String name);
+public interface OutputSqsService {
+    void addIdInQueue(String data);
 }

@@ -1,85 +1,74 @@
 package com.innowise.enricherservice.service.impl;
 
-import com.innowise.enricherservice.route.SqsService;
+import com.innowise.enricherservice.client.SpotifyClient;
 import com.innowise.enricherservice.service.MetadataExtractorService;
-import com.innowise.enricherservice.service.QueueListenerService;
+import com.innowise.enricherservice.service.OutputSqsService;
 import com.innowise.enricherservice.service.SongDownloadService;
-import jakarta.ws.rs.InternalServerErrorException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
-import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
-
-import java.util.List;
 
 @Slf4j
-@RestController
-@RequestMapping("/api")
+@Component
 @RequiredArgsConstructor
-public class QueueListenerServiceImpl implements QueueListenerService {
-    private static final String queueName = "file-api-queue";
+@RestController()
+public class QueueListenerServiceImpl {
+    private static final String QUEUE_URL = "http://localhost:4566/000000000000/file-api-queue";
     private final SqsClient sqsClient;
-    private final SqsService sqsService;
+    private final OutputSqsService outputSqsService;
     private final MetadataExtractorService metadataExtractorService;
     private final SongDownloadService songDownloadService;
+    private final SpotifyClient spotifyClient;
 
-    @GetMapping("/send")
-    public ResponseEntity<String> hello() {
-        try {
-            sqsService.addIdInQueue(100L);
-            return ResponseEntity.ok("Success");
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
-        }
-    }
-
+    //    @SqsListener(value = "file-api-queue")
     @GetMapping("/get")
-    public ResponseEntity<String> get() {
-        String queueUrl = "http://localhost:4566/000000000000/file-api-queue";
+    public void get() {
 
-        ReceiveMessageRequest receiveRequest = ReceiveMessageRequest.builder()
-                .queueUrl(queueUrl)
+        var receiveRequest = ReceiveMessageRequest.builder()
+                .queueUrl(QUEUE_URL)
                 .maxNumberOfMessages(10)
                 .build();
+        var iterator = 0;
         try {
             while (true) {
-                ReceiveMessageResponse receiveResponse = sqsClient.receiveMessage(receiveRequest);
-                List<Message> messages = receiveResponse.messages();
+                var receiveResponse = sqsClient.receiveMessage(receiveRequest);
+                var messages = receiveResponse.messages();
                 if (!messages.isEmpty()) {
                     for (Message message : messages) {
-                        String messageId = message.messageId();
-                        String body = message.body();
+                        var messageId = message.messageId();
+                        var body = message.body();
                         log.info("Message received");
                         log.info("Message ID: " + messageId);
                         log.info("Message Body: " + body);
-                        DeleteMessageRequest deleteRequest = DeleteMessageRequest.builder()
-                                .queueUrl(queueUrl)
+                        var deleteRequest = DeleteMessageRequest.builder()
+                                .queueUrl(QUEUE_URL)
                                 .receiptHandle(message.receiptHandle())
                                 .build();
                         try {
                             var file = songDownloadService.downloadFile(Long.valueOf(body));
-                            var apiResponse = metadataExtractorService.extractMetadataFromFile(file);
+                            var songData = metadataExtractorService.extractMetadataFromFile(file);
+                            var apiResponse = spotifyClient.search(songData);
                             sqsClient.deleteMessage(deleteRequest);
-                            return apiResponse;
+                            outputSqsService.addIdInQueue(String.valueOf(iterator++));
+//                            outputSqsService.addIdInQueue(apiResponse.getBody());
+//                            return apiResponse;
                         } catch (Exception e) {
-                            log.error("Error while file parsing");
-                            throw new InternalServerErrorException("Error while file parsing");
+                            log.error("Error while file processing");
+                            e.printStackTrace();
+//                            throw new InternalServerErrorException("Error while song file processing");
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error(e.getMessage());
+//            throw new InternalServerErrorException("Internal server error");
         }
-        return ResponseEntity.internalServerError().body("Internal server error");
     }
-
-
 }
